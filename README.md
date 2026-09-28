@@ -3,7 +3,7 @@
 A fast, 100% browser-based tool to instantly convert raw SVG files into clean, production-ready React components with a live visual preview.
 
 ## 🚀 Live Demo
-Check it out live here: [https://netlify.app](https://netlify.app)
+Check it out live here:https://svg-component-converter.netlify.app/
 
 ## ✨ Features
 - **Instant Preview:** View your icon dynamically before copying the code.
