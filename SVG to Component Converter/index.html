@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ SVG to React Component Converter</title>
+    <style>
+        body { font-family: sans-serif; background-color: #111827; color: white; padding: 2rem; margin: 0; }
+        header { text-align: center; max-width: 1000px; margin: 0 auto 2rem auto; }
+        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #3b82f6; }
+        p { color: #9ca3af; }
+        main { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 768px) { main { grid-template-columns: 1fr; } }
+        .box { background-color: #1f2937; border: 2px dashed #4b5563; border-radius: 0.75rem; padding: 2rem; height: 12rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+        .box:hover { border-color: #3b82f6; }
+        .input-group { margin-top: 1rem; }
+        label { display: block; font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.25rem; }
+        input[type="text"] { width: 100%; box-sizing: border-box; background-color: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 1rem; color: white; outline: none; }
+        input[type="text"]:focus { border-color: #3b82f6; }
+        .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        button { background-color: #2563eb; color: white; border: none; padding: 0.4rem 0.8rem; font-weight: bold; border-radius: 0.25rem; cursor: pointer; display: none; }
+        button:hover { background-color: #1d4ed8; }
+        pre { background-color: #030712; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1rem; overflow: auto; height: 15rem; margin: 0; color: #4ade80; font-family: monospace; }
+        #file-input { display: none; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⚡ SVG to Component Converter</h1>
+        <p>Arraste seu SVG ou clique na caixa para converter instantaneamente.</p>
+    </header>
+
+    <main>
+        <div>
+            <!-- Adicionada uma tag input escondida para permitir o clique -->
+            <input type="file" id="file-input" accept=".svg">
+            <div id="drop-zone" class="box">
+                <p>Arraste seu arquivo <span style="color:#60a5fa; font-weight:bold;">.svg</span> aqui <br><br> ou <br><br> <span style="text-decoration: underline; color: #3b82f6;">Clique para selecionar</span></p>
+            </div>
+            <div class="input-group">
+                <label>Nome do Componente</label>
+                <input type="text" id="component-name" value="BotaoHome">
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column;">
+            <div class="output-header">
+                <span style="font-size:0.875rem; color:#9ca3af;">Resultado (React Component)</span>
+                <button id="copy-btn">Copiar Código</button>
+            </div>
+            <pre><code id="output-code">// O código gerado aparecerá aqui...</code></pre>
+        </div>
+    </main>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const componentNameInput = document.getElementById('component-name');
+        const outputCodeEl = document.getElementById('output-code');
+        const copyBtn = document.getElementById('copy-btn');
+        let rawSvgText = "";
+
+        // Abre a janela de escolha de arquivo ao clicar na caixa grande
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Quando o usuário escolhe o arquivo clicando
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) lerArquivo(file);
+        });
+
+        // Configuração do Arrastar e Soltar (Drag and Drop)
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, e => e.preventDefault(), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const file = e.dataTransfer.files[0];
+            if (file) lerArquivo(file);
+        });
+
+        function lerArquivo(file) {
+            // Verifica se termina com .svg para ser mais flexível que a validação antiga
+            if (file.name.endsWith('.svg')) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    rawSvgText = event.target.result;
+                    processSVG();
+                };
+                reader.readAsText(file);
+            } else {
+                alert('Por favor, selecione apenas arquivos com a extensão .svg');
+            }
+        }
+
+        componentNameInput.addEventListener('input', () => {
+            if (rawSvgText) processSVG();
+        });
+
+        function processSVG() {
+            const name = componentNameInput.value.trim() || 'MyIcon';
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(rawSvgText, 'image/svg+xml');
+            const svgElement = doc.querySelector('svg');
+
+            if (!svgElement) {
+                outputCodeEl.textContent = 'SVG inválido ou corrompido';
+                return;
+            }
+
+            svgElement.removeAttribute('xmlns:xlink');
+            svgElement.removeAttribute('xml:space');
+            let innerHTML = svgElement.innerHTML;
+
+            innerHTML = innerHTML.replace(/(?<=\s)[a-z-]+(?==)/g, (match) => {
+                if (match.includes('-')) {
+                    return match.replace(/-([a-z])/g, (g) => g.toUpperCase());
+                }
+                return match;
+            });
+
+            const result = `import React from 'react';\n\nexport function ${name}(props: React.SVGProps<SVGSVGElement>) {\n  return (\n    <svg\n      xmlns="http://w3.org"\n      viewBox="${svgElement.getAttribute('viewBox') || '0 0 24 24'}"\n      width={props.width || "${svgElement.getAttribute('width') || '24'}"}\n      height={props.height || "${svgElement.getAttribute('height') || '24'}"}\n      fill="${svgElement.getAttribute('fill') || 'currentColor'}"\n      {...props}\n    >\n      ${innerHTML.trim()}\n    </svg>\n  );\n}`;
+
+            outputCodeEl.textContent = result;
+            copyBtn.style.display = 'block';
+        }
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(outputCodeEl.textContent);
+            alert('Código copiado com sucesso! 🚀');
+        });
+    </script>
+</body>
+</html>
